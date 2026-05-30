@@ -46,7 +46,8 @@ export default function SaveLoad({
   return (
     <div className="save-load">
       <button type="button" className="ghost" onClick={onExport} disabled={!state.svg}>
-        Save project
+        <span className="material-icons" aria-hidden="true">save</span>
+        Save
       </button>
       <button
         type="button"
@@ -54,7 +55,10 @@ export default function SaveLoad({
         onClick={onExportGif}
         disabled={!state.svg || state.steps.length === 0 || isExportingGif}
       >
-        {isExportingGif ? 'Exporting GIF...' : 'Export GIF'}
+        <span className="material-icons" aria-hidden="true">
+          {isExportingGif ? 'hourglass_top' : 'movie'}
+        </span>
+        {isExportingGif ? 'Exporting...' : 'GIF'}
       </button>
       <label className="ghost file-btn">
         <input
@@ -63,7 +67,8 @@ export default function SaveLoad({
           hidden
           onChange={(e) => onFile(e.target.files?.[0])}
         />
-        Load project
+        <span className="material-icons" aria-hidden="true">folder_open</span>
+        Load
       </label>
     </div>
   )

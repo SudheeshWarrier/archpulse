@@ -137,7 +137,9 @@ export default function SVGCanvas({ svg, mode, onElementClick, activeStep, playb
         <div className="svg-canvas-inner" dangerouslySetInnerHTML={{ __html: svg }} />
       ) : (
         <div className="svg-canvas-empty">
-          <div className="svg-canvas-empty-icon">◇</div>
+          <div className="svg-canvas-empty-icon">
+            <span className="material-icons" aria-hidden="true">account_tree</span>
+          </div>
           <p>Upload an SVG to begin</p>
           <span>Click shapes and lines to build animations step by step</span>
         </div>

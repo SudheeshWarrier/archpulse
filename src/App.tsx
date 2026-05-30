@@ -13,6 +13,8 @@ import logo from './assets/archpulse.png'
 import './animations.css'
 import './styles.css'
 
+type ThemePreference = 'system' | 'light' | 'dark'
+
 export default function App() {
   const [state, dispatch] = useProjectReducer()
   const [editingIndex, setEditingIndex] = useState(0)
@@ -20,11 +22,43 @@ export default function App() {
     null
   )
   const [isCanvasMaximized, setIsCanvasMaximized] = useState(false)
+  const [themePreference, setThemePreference] = useState<ThemePreference>('system')
   const playback = usePlayback({ stepsCount: state.steps.length })
   const canvasRef = React.useRef<HTMLDivElement | null>(null)
 
   const hasSvg = Boolean(state.svg)
   const isPlaying = playback.isPlaying
+
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem('archpulse-theme') as ThemePreference | null
+    if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system') {
+      setThemePreference(storedTheme)
+    }
+  }, [])
+
+  useEffect(() => {
+    const updateTheme = () => {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      const effectiveTheme = themePreference === 'system' ? (prefersDark ? 'dark' : 'light') : themePreference
+      document.documentElement.classList.toggle('theme-dark', effectiveTheme === 'dark')
+      document.documentElement.classList.toggle('theme-light', effectiveTheme === 'light')
+    }
+
+    updateTheme()
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const listener = () => {
+      if (themePreference === 'system') {
+        updateTheme()
+      }
+    }
+    mediaQuery.addEventListener?.('change', listener)
+    return () => mediaQuery.removeEventListener?.('change', listener)
+  }, [themePreference])
+
+  useEffect(() => {
+    window.localStorage.setItem('archpulse-theme', themePreference)
+  }, [themePreference])
 
   useEffect(() => {
     if (state.steps.length === 0) {
@@ -151,55 +185,77 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="hero-copy-panel">
-          <div className="brand-identity">
-            <img className="brand-logo" src={logo} alt="ArchPulse logo" />
-            <div className="brand-text">
-              <p className="eyebrow">ArchPulse</p>
-              <h1>Convert your architecture diagrams into a story.</h1>
-            </div>
+        <a className="app-brand" href="#" aria-label="ArchPulse home">
+          <img className="app-brand-logo" src={logo} alt="" />
+          <span>ArchPulse</span>
+          <span className="beta-tag">BETA</span>
+        </a>
+
+        <div className="header-actions" aria-label="Theme and pricing">
+          <div className="theme-segmented" role="group" aria-label="Theme">
+            {[
+              { value: 'system', icon: 'desktop_windows', label: 'System' },
+              { value: 'light', icon: 'light_mode', label: 'Light' },
+              { value: 'dark', icon: 'dark_mode', label: 'Dark' }
+            ].map((theme) => (
+              <button
+                key={theme.value}
+                type="button"
+                className={themePreference === theme.value ? 'is-active' : ''}
+                onClick={() => setThemePreference(theme.value as ThemePreference)}
+                aria-pressed={themePreference === theme.value}
+                aria-label={`${theme.label} theme`}
+                title={`${theme.label} theme`}
+              >
+                <span className="material-icons" aria-hidden="true">{theme.icon}</span>
+                <span className="theme-label">{theme.label}</span>
+              </button>
+            ))}
           </div>
+          <a href="#pricing" className="header-pricing-link" aria-label="View pricing">
+            <span className="material-icons" aria-hidden="true">sell</span>
+            Pricing
+          </a>
+        </div>
+      </header>
+
+      <section className="hero-section">
+        <div className="hero-content">
+          <p className="eyebrow">Architecture walkthrough builder</p>
+          <h1>Turn static diagrams into clear animated walkthroughs.</h1>
           <p className="hero-copy">
-            Turn your static architecture diagrams into step-by-step animations that walk teams
-            through every cloud, service, and flow.
+            Import an SVG, choose what appears at each moment, and play the system flow back as a
+            focused story your team can review together.
           </p>
-          <p className="hero-copy-note">
-            Upload an SVG, accept smart step suggestions, then preview the flow with intuitive playback controls.
-          </p>
+
+          <ul className="hero-feature-list" aria-label="Key features">
+            <li>
+              <span className="material-icons" aria-hidden="true">upload_file</span>
+              SVG imports from diagram tools
+            </li>
+            <li>
+              <span className="material-icons" aria-hidden="true">auto_awesome</span>
+              Suggested animation steps
+            </li>
+            <li>
+              <span className="material-icons" aria-hidden="true">play_circle</span>
+              Review-ready playback
+            </li>
+          </ul>
         </div>
 
-        <div className="hero-upload-panel">
+        <div className="hero-upload-section">
           <div className="hero-upload-card">
             <div className="hero-upload-meta">
               <p className="hero-upload-title">Upload your SVG</p>
               <p className="hero-upload-description">
-                Use SVG export from draw.io, Figma, or Lucidchart. Drop a file here or choose one
-                from your device to begin.
+                Drop a file here or choose from your device to begin animating.
               </p>
             </div>
             <UploadZone onLoad={handleUpload} />
-            <SaveLoad state={state} dispatch={dispatch} />
           </div>
         </div>
-
-        <div className="hero-feature-grid">
-          <article className="feature-card">
-            <p className="feature-label">Fast diagram onboarding</p>
-            <h3>Import from any design tool</h3>
-            <p>Bring in architecture exports from Figma, draw.io, Lucidchart, or any SVG source and start animating instantly.</p>
-          </article>
-          <article className="feature-card">
-            <p className="feature-label">Smart story steps</p>
-            <h3>Auto-suggest animation flow</h3>
-            <p>Let ArchPulse detect nodes and edges, then generate an initial storyboard you can refine with a click.</p>
-          </article>
-          <article className="feature-card">
-            <p className="feature-label">Review with confidence</p>
-            <h3>Preview step-by-step flow</h3>
-            <p>Use playback controls, spacebar play, and arrow navigation to validate every architecture walkthrough.</p>
-          </article>
-        </div>
-      </header>
+      </section>
 
       <main className={`editor-workspace${isCanvasMaximized ? ' is-canvas-maximized' : ''}`}>
         <section ref={canvasRef} className={`canvas-stage${isCanvasMaximized ? ' is-maximized' : ''}`}>
@@ -219,6 +275,7 @@ export default function App() {
               currentStep={playback.currentStep}
               disabled={!hasSvg || state.steps.length === 0}
             />
+            <SaveLoad state={state} dispatch={dispatch} />
           </div>
 
           <SVGCanvas
@@ -270,6 +327,36 @@ export default function App() {
         />
       </main>
 
+      <section id="pricing" className="pricing-section">
+        <div className="pricing-grid">
+          <article className="pricing-card">
+            <h3>Basic — FREE</h3>
+            <p className="pricing-sub">For those who like to keep it simple</p>
+            <ul>
+              <li>Turn diagrams into usable data</li>
+              <li>Identify shapes and how they connect</li>
+              <li>Works well with most common diagram styles</li>
+              <li>Export results to plug into your workflow</li>
+              <li>(Yes… this is basically the same as Premium)</li>
+            </ul>
+            <p className="pricing-price">💸 Price: FREE (no surprises here)</p>
+          </article>
+
+          <article className="pricing-card">
+            <h3>Premium — FREE</h3>
+            <p className="pricing-sub">For those who enjoy a more “refined” experience</p>
+            <ul>
+              <li>Convert diagrams into structured output</li>
+              <li>Understand elements and their relationships</li>
+              <li>Handles typical diagrams without complaining</li>
+              <li>Output ready for whatever you’re building next</li>
+              <li>(It’s the same thing as Basic, we just dressed it up)</li>
+            </ul>
+            <p className="pricing-price">🔥 Price: FREE (premium, obviously)</p>
+          </article>
+        </div>
+      </section>
+
       {suggestedSteps && (
         <AutoSuggestModal
           steps={suggestedSteps}
@@ -277,6 +364,13 @@ export default function App() {
           onReject={() => setSuggestedSteps(null)}
         />
       )}
+
+      <footer className="app-footer">
+        <div className="app-footer-inner">
+          <p className="footer-tag">Making architeccture diagrams butiful, one line at a time</p>
+          <p className="footer-copy">© {new Date().getFullYear()} ArchPulse — All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   )
 }

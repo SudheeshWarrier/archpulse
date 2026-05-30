@@ -34,6 +34,86 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
 
+function isSafeEmbeddedImageHref(value: string) {
+  const href = value.trim().toLowerCase()
+  return /^data:image\/(png|jpe?g|gif|webp);base64,/.test(href)
+}
+
+function hasExternalReference(value: string) {
+  const ref = value.trim().toLowerCase()
+  return (
+    ref.startsWith('http:') ||
+    ref.startsWith('https:') ||
+    ref.startsWith('//') ||
+    ref.startsWith('blob:') ||
+    ref.startsWith('data:image/svg')
+  )
+}
+
+function sanitizeCssForCanvas(value: string) {
+  return value
+    .replace(/@import\s+[^;]+;?/gi, '')
+    .replace(/url\(\s*(['"]?)(?:https?:|\/\/|blob:|data:image\/svg)[^)]+\1\s*\)/gi, 'none')
+}
+
+function sanitizeSvgForCanvas(svgEl: SVGSVGElement) {
+  svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+  svgEl.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+
+  svgEl.querySelectorAll('script, foreignObject, iframe, video, audio, canvas').forEach((node) => {
+    node.remove()
+  })
+
+  svgEl.querySelectorAll('style').forEach((styleEl) => {
+    styleEl.textContent = sanitizeCssForCanvas(styleEl.textContent || '')
+  })
+
+  Array.from(svgEl.querySelectorAll('*')).forEach((el) => {
+    const tagName = el.tagName.toLowerCase()
+
+    if (tagName === 'image') {
+      const href = el.getAttribute('href') || el.getAttribute('xlink:href') || ''
+      if (!isSafeEmbeddedImageHref(href)) {
+        el.remove()
+        return
+      }
+    }
+
+    Array.from(el.attributes).forEach((attr) => {
+      if (attr.name === 'style') {
+        el.setAttribute(attr.name, sanitizeCssForCanvas(attr.value))
+        return
+      }
+
+      const lowerName = attr.name.toLowerCase()
+      const isUrlAttribute =
+        lowerName === 'href' ||
+        lowerName === 'xlink:href' ||
+        lowerName === 'src' ||
+        lowerName === 'filter' ||
+        lowerName === 'fill' ||
+        lowerName === 'stroke' ||
+        lowerName === 'clip-path' ||
+        lowerName === 'mask'
+
+      if (!isUrlAttribute) return
+
+      if (lowerName === 'href' || lowerName === 'xlink:href' || lowerName === 'src') {
+        const isInternalReference = attr.value.trim().startsWith('#')
+        const isAllowedImage = tagName === 'image' && isSafeEmbeddedImageHref(attr.value)
+        if (!isInternalReference && !isAllowedImage) {
+          el.removeAttribute(attr.name)
+        }
+        return
+      }
+
+      if (hasExternalReference(attr.value)) {
+        el.removeAttribute(attr.name)
+      }
+    })
+  })
+}
+
 function ensureSvgFrameStyles(svgString: string, playbackState: ReturnType<typeof buildPlaybackVisualState>) {
   const parser = new DOMParser()
   const doc = parser.parseFromString(svgString, 'image/svg+xml')
@@ -65,7 +145,7 @@ function ensureSvgFrameStyles(svgString: string, playbackState: ReturnType<typeo
         const length = geom.getTotalLength()
         if (Number.isFinite(length) && length > 0) {
           style.push(`stroke-dasharray: ${length}`)
-          style.push(`stroke-dashoffset: ${isCurrentFlow ? length : isSeenFlow ? 0 : length}`)
+          style.push(`stroke-dashoffset: ${isCurrentFlow || isSeenFlow ? 0 : length}`)
           style.push('transition: none')
         }
       } catch {
@@ -73,25 +153,30 @@ function ensureSvgFrameStyles(svgString: string, playbackState: ReturnType<typeo
       }
       if (isCurrentFlow) {
         style.push('opacity: 1')
+        style.push('stroke: #d91a3a')
+        style.push('stroke-width: 3')
       } else if (isSeenFlow) {
-        style.push('opacity: 0.75')
+        style.push('opacity: 0.85')
       } else {
-        style.push('opacity: 0.18')
+        style.push('opacity: 0.45')
       }
     } else {
       if (isCurrentHighlight) {
         style.push('opacity: 1')
-        style.push('filter: drop-shadow(0 0 12px rgba(217, 26, 58, 0.5))')
+        style.push('stroke: #d91a3a')
+        style.push('stroke-width: 3')
       } else if (isSeenHighlight) {
         style.push('opacity: 0.85')
       } else {
-        style.push('opacity: 0.2')
+        style.push('opacity: 0.45')
       }
     }
 
     const existingStyle = shape.getAttribute('style') || ''
     shape.setAttribute('style', `${existingStyle};${style.join(';')}`)
   })
+
+  sanitizeSvgForCanvas(svgEl)
 
   const serializer = new XMLSerializer()
   return serializer.serializeToString(svgEl)
@@ -136,58 +221,38 @@ function blendToWhite(r: number, g: number, b: number, a: number) {
   }
 }
 
-function buildPalette(frames: ImageData[], maxColors = 256) {
-  const counts = new Map<string, number>()
-  frames.forEach((frame) => {
-    const data = frame.data
-    for (let i = 0; i < data.length; i += 4) {
-      const rgba = blendToWhite(data[i], data[i + 1], data[i + 2], data[i + 3])
-      const key = `${rgba.r},${rgba.g},${rgba.b}`
-      counts.set(key, (counts.get(key) ?? 0) + 1)
+function buildPalette() {
+  const palette: [number, number, number][] = []
+  for (let r = 0; r < 8; r += 1) {
+    for (let g = 0; g < 8; g += 1) {
+      for (let b = 0; b < 4; b += 1) {
+        palette.push([
+          Math.round((r / 7) * 255),
+          Math.round((g / 7) * 255),
+          Math.round((b / 3) * 255)
+        ])
+      }
     }
-  })
-
-  const entries = [...counts.entries()] as [string, number][]
-  entries.sort((a, b) => b[1] - a[1])
-  const palette = entries.slice(0, maxColors).map(([key]) => key.split(',').map(Number) as [number, number, number])
-
-  if (palette.length === 0) {
-    palette.push([255, 255, 255])
   }
-
-  const paletteSize = 1 << Math.ceil(Math.log2(Math.max(2, palette.length)))
-  while (palette.length < paletteSize) {
-    palette.push([255, 255, 255])
-  }
-
+  palette[255] = [255, 255, 255]
   return palette
 }
 
-function findNearestColorIndex(palette: [number, number, number][], r: number, g: number, b: number) {
-  let nearest = 0
-  let bestDist = Infinity
-  for (let i = 0; i < palette.length; i += 1) {
-    const [pr, pg, pb] = palette[i]
-    const dr = pr - r
-    const dg = pg - g
-    const db = pb - b
-    const dist = dr * dr + dg * dg + db * db
-    if (dist < bestDist) {
-      bestDist = dist
-      nearest = i
-    }
-  }
-  return nearest
+function quantizeColorIndex(r: number, g: number, b: number) {
+  if (r > 248 && g > 248 && b > 248) return 255
+
+  const ri = Math.round((r / 255) * 7)
+  const gi = Math.round((g / 255) * 7)
+  const bi = Math.round((b / 255) * 3)
+  return ri * 32 + gi * 4 + bi
 }
 
-function pixelsToIndices(frame: ImageData, palette: [number, number, number][]) {
+function pixelsToIndices(frame: ImageData) {
   const indices = new Uint8Array(frame.width * frame.height)
   const data = frame.data
   for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
     const rgba = blendToWhite(data[i], data[i + 1], data[i + 2], data[i + 3])
-    const key = `${rgba.r},${rgba.g},${rgba.b}`
-    const matchIndex = palette.findIndex((color) => color[0] === rgba.r && color[1] === rgba.g && color[2] === rgba.b)
-    indices[p] = matchIndex >= 0 ? matchIndex : findNearestColorIndex(palette, rgba.r, rgba.g, rgba.b)
+    indices[p] = quantizeColorIndex(rgba.r, rgba.g, rgba.b)
   }
   return indices
 }
@@ -204,8 +269,6 @@ function lzwEncode(minCodeSize: number, data: Uint8Array) {
   const clearCode = 1 << minCodeSize
   const endCode = clearCode + 1
   let codeSize = minCodeSize + 1
-  let nextCode = endCode + 1
-  const dict = new Map<string, number>()
 
   const output: number[] = []
   let bitBuffer = 0
@@ -229,28 +292,17 @@ function lzwEncode(minCodeSize: number, data: Uint8Array) {
     }
   }
 
-  let prefix = `${data[0]}`
   pushCode(clearCode)
 
-  for (let i = 1; i <= data.length; i += 1) {
-    const current = i < data.length ? `${data[i]}` : null
-    const combined = current !== null ? `${prefix},${current}` : null
+  let literalCodesSinceClear = 0
+  for (let i = 0; i < data.length; i += 1) {
+    pushCode(data[i])
+    literalCodesSinceClear += 1
 
-    if (combined !== null && dict.has(combined)) {
-      prefix = combined
-      continue
-    }
-
-    const code = dict.has(prefix) ? dict.get(prefix)! : Number(prefix)
-    pushCode(code)
-
-    if (combined !== null) {
-      dict.set(combined, nextCode)
-      nextCode += 1
-      if (nextCode === (1 << codeSize) && codeSize < 12) {
-        codeSize += 1
-      }
-      prefix = current!
+    if (literalCodesSinceClear >= 240 && i < data.length - 1) {
+      pushCode(clearCode)
+      codeSize = minCodeSize + 1
+      literalCodesSinceClear = 0
     }
   }
 
@@ -349,12 +401,13 @@ export async function exportAnimatedGif(svg: string, steps: AnimationStep[]) {
     frames.push(frameData)
   }
 
-  const palette = buildPalette(frames)
+  const palette = buildPalette()
   const encoder = new GifEncoder(targetWidth, targetHeight, palette)
 
   frames.forEach((frame, index) => {
-    const indices = pixelsToIndices(frame, palette)
-    encoder.addFrame(indices, steps[index]?.durationMs ?? 1200)
+    const indices = pixelsToIndices(frame)
+    const delayMs = steps[index]?.durationMs ?? 1200
+    encoder.addFrame(indices, Math.max(2, Math.round(delayMs / 10)))
   })
 
   const gifBytes = encoder.finish()
@@ -362,6 +415,10 @@ export async function exportAnimatedGif(svg: string, steps: AnimationStep[]) {
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
   link.download = 'animation.gif'
+  document.body.appendChild(link)
   link.click()
-  URL.revokeObjectURL(link.href)
+  window.setTimeout(() => {
+    URL.revokeObjectURL(link.href)
+    link.remove()
+  }, 1000)
 }

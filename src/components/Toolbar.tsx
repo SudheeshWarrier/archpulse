@@ -35,7 +35,7 @@ export default function Toolbar({
     <div className={`playback-bar ${disabled ? 'is-disabled' : ''}`}>
       <div className="playback-controls">
         <button type="button" className="ghost icon-btn" onClick={onPrev} disabled={disabled} aria-label="Previous step">
-          ◀
+          <span className="material-icons" aria-hidden="true">skip_previous</span>
         </button>
         <button
           type="button"
@@ -44,10 +44,11 @@ export default function Toolbar({
           disabled={disabled}
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
+          <span className="material-icons" aria-hidden="true">{isPlaying ? 'pause' : 'play_arrow'}</span>
           {isPlaying ? 'Pause' : 'Play'}
         </button>
         <button type="button" className="ghost icon-btn" onClick={onNext} disabled={disabled} aria-label="Next step">
-          ▶
+          <span className="material-icons" aria-hidden="true">skip_next</span>
         </button>
         <button
           type="button"
@@ -55,7 +56,9 @@ export default function Toolbar({
           onClick={onToggleMaximize}
           aria-label={isMaximized ? 'Restore canvas' : 'Maximize canvas'}
         >
-          {isMaximized ? '⤢' : '⤡'}
+          <span className="material-icons" aria-hidden="true">
+            {isMaximized ? 'close_fullscreen' : 'open_in_full'}
+          </span>
         </button>
       </div>
 
