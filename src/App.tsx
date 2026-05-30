@@ -367,7 +367,7 @@ export default function App() {
 
       <footer className="app-footer">
         <div className="app-footer-inner">
-          <p className="footer-tag">Making architeccture diagrams butiful, one line at a time</p>
+          <p className="footer-tag">Making architecture diagrams beautiful, one line at a time.</p>
           <p className="footer-copy">© {new Date().getFullYear()} ArchPulse — All rights reserved.</p>
         </div>
       </footer>
