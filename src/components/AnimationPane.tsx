@@ -48,9 +48,11 @@ export default function AnimationPane({
         </div>
         <div className="animation-pane-actions">
           <button type="button" className="ghost" onClick={onAdd} disabled={!hasSvg}>
-            + Step
+            <span className="material-icons" aria-hidden="true">add</span>
+            Step
           </button>
           <button type="button" className="secondary" onClick={onSuggest} disabled={!hasSvg}>
+            <span className="material-icons" aria-hidden="true">auto_awesome</span>
             Suggest
           </button>
         </div>
@@ -113,8 +115,9 @@ export default function AnimationPane({
                         }}
                         disabled={index === 0}
                         aria-label="Move step up"
+                        title="Move step up"
                       >
-                        ↑
+                        <span className="material-icons" aria-hidden="true">arrow_upward</span>
                       </button>
                       <button
                         type="button"
@@ -125,11 +128,28 @@ export default function AnimationPane({
                         }}
                         disabled={index === steps.length - 1}
                         aria-label="Move step down"
+                        title="Move step down"
                       >
-                        ↓
+                        <span className="material-icons" aria-hidden="true">arrow_downward</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost icon-btn danger-text"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onRemove(step.id)
+                        }}
+                        aria-label="Delete step"
+                        title="Delete step"
+                      >
+                        <span className="material-icons" aria-hidden="true">delete</span>
                       </button>
                     </div>
-                    {isPlaying && <span className="step-playing-badge">▶</span>}
+                    {isPlaying && (
+                      <span className="step-playing-badge" aria-label="Playing">
+                        <span className="material-icons" aria-hidden="true">play_arrow</span>
+                      </span>
+                    )}
                   </div>
                 </li>
               )
@@ -145,6 +165,7 @@ export default function AnimationPane({
                   className="ghost danger-text step-detail-delete"
                   onClick={() => onRemove(activeStep.id)}
                 >
+                  <span className="material-icons" aria-hidden="true">delete</span>
                   Delete
                 </button>
               </div>
