@@ -1,0 +1,93 @@
+:root {
+  --arch-highlight-color: var(--primary-color);
+  --arch-flow-color: var(--primary-color);
+}
+
+@keyframes arch-highlight {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 5px var(--arch-highlight-color));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px var(--arch-highlight-color));
+  }
+}
+
+@keyframes arch-flow {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes arch-edge-preview {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    filter: drop-shadow(0 0 8px var(--arch-flow-color));
+  }
+}
+
+[data-arch-id] {
+  cursor: pointer;
+  transition: opacity 200ms ease, filter 200ms ease;
+}
+
+line[data-arch-id],
+path[data-arch-id],
+polyline[data-arch-id] {
+  pointer-events: stroke;
+  stroke-linecap: round;
+}
+
+.arch-hit-layer {
+  pointer-events: none;
+}
+
+.arch-hit-layer [data-arch-hit] {
+  pointer-events: stroke;
+}
+
+/* Edit mode — soft dim on unassigned only */
+.arch-dimmed {
+  opacity: 0.5 !important;
+}
+
+.arch-editing-node {
+  filter: drop-shadow(0 0 10px rgba(217, 26, 58, 0.65));
+}
+
+.arch-editing-edge {
+  animation: arch-edge-preview 1.2s ease-in-out infinite;
+  stroke: var(--primary-color) !important;
+}
+
+/* Playback — cumulative "already shown" states stay fully visible */
+.arch-seen-node {
+  filter: drop-shadow(0 0 4px rgba(217, 26, 58, 0.35));
+}
+
+.arch-seen-edge {
+  stroke: var(--primary-color) !important;
+  opacity: 1 !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arch-highlighted {
+    animation: arch-highlight 1.5s ease-in-out infinite;
+  }
+
+  .arch-flowing {
+    animation: arch-flow 1.2s linear forwards;
+    stroke: var(--primary-color) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arch-highlighted,
+  .arch-flowing,
+  .arch-editing-edge {
+    filter: drop-shadow(0 0 6px var(--arch-highlight-color));
+  }
+}
