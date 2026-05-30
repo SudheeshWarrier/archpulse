@@ -18,6 +18,7 @@ export default function App() {
   const [suggestedSteps, setSuggestedSteps] = useState<ReturnType<typeof autoGenerateSteps> | null>(
     null
   )
+  const [isCanvasMaximized, setIsCanvasMaximized] = useState(false)
   const playback = usePlayback({ stepsCount: state.steps.length })
 
   const hasSvg = Boolean(state.svg)
@@ -104,6 +105,27 @@ export default function App() {
     setSuggestedSteps(steps)
   }, [state.elements, state.svg])
 
+  const handleMoveStep = useCallback(
+    (stepId: string, direction: -1 | 1) => {
+      const currentOrder = [...state.steps]
+      const sourceIndex = currentOrder.findIndex((step) => step.id === stepId)
+      if (sourceIndex < 0) return
+      const targetIndex = sourceIndex + direction
+      if (targetIndex < 0 || targetIndex >= currentOrder.length) return
+
+      const [moved] = currentOrder.splice(sourceIndex, 1)
+      currentOrder.splice(targetIndex, 0, moved)
+      dispatch({ type: 'REORDER_STEPS', payload: currentOrder.map((step) => step.id) })
+
+      const currentEditingStep = state.steps[editingIndex]
+      if (currentEditingStep) {
+        const newIndex = currentOrder.findIndex((step) => step.id === currentEditingStep.id)
+        if (newIndex >= 0) setEditingIndex(newIndex)
+      }
+    },
+    [dispatch, editingIndex, state.steps]
+  )
+
   const acceptSuggestion = useCallback(() => {
     if (!suggestedSteps) return
     dispatch({ type: 'SET_STEPS', payload: suggestedSteps })
@@ -138,8 +160,8 @@ export default function App() {
         </div>
       </header>
 
-      <main className="editor-workspace">
-        <section className="canvas-stage">
+      <main className={`editor-workspace${isCanvasMaximized ? ' is-canvas-maximized' : ''}`}>
+        <section className={`canvas-stage${isCanvasMaximized ? ' is-maximized' : ''}`}>
           <div className="stage-toolbar">
             <Toolbar
               isPlaying={playback.isPlaying}
@@ -150,6 +172,8 @@ export default function App() {
               setSpeed={playback.setSpeed}
               loop={playback.loop}
               setLoop={playback.setLoop}
+              onToggleMaximize={() => setIsCanvasMaximized((value) => !value)}
+              isMaximized={isCanvasMaximized}
               stepCount={state.steps.length}
               currentStep={playback.currentStep}
               disabled={!hasSvg || state.steps.length === 0}
@@ -193,6 +217,7 @@ export default function App() {
             setEditingIndex(state.steps.length)
           }}
           onRemove={(id) => dispatch({ type: 'REMOVE_STEP', payload: id })}
+          onMoveStep={handleMoveStep}
           onUpdateLabel={(stepId, label) =>
             dispatch({ type: 'UPDATE_STEP', payload: { stepId, label } })
           }

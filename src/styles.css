@@ -143,6 +143,14 @@ h1 {
   align-items: stretch;
 }
 
+.editor-workspace.is-canvas-maximized {
+  grid-template-columns: 1fr;
+}
+
+.editor-workspace.is-canvas-maximized .animation-pane {
+  display: none;
+}
+
 .canvas-stage {
   display: flex;
   flex-direction: column;
@@ -178,6 +186,10 @@ h1 {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.maximize-btn {
+  font-size: 1rem;
 }
 
 .play-btn {
@@ -234,6 +246,10 @@ h1 {
   border: 1px solid var(--border);
   background: #fff;
   overflow: hidden;
+}
+
+.canvas-stage.is-maximized .svg-canvas-wrap {
+  min-height: 72vh;
 }
 
 .svg-canvas-inner {
@@ -400,6 +416,12 @@ h1 {
   transform: none;
   background: rgba(217, 26, 58, 0.04);
   box-shadow: none;
+}
+
+.step-row-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .step-timeline-row.is-editing {

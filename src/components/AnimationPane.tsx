@@ -9,6 +9,7 @@ type Props = {
   onEditingIndexChange: (index: number) => void
   onAdd: () => void
   onRemove: (id: string) => void
+  onMoveStep: (stepId: string, direction: -1 | 1) => void
   onUpdateLabel: (stepId: string, label: string) => void
   onUnassign: (stepId: string, elementId: string) => void
   onSuggest: () => void
@@ -30,6 +31,7 @@ export default function AnimationPane({
   onEditingIndexChange,
   onAdd,
   onRemove,
+  onMoveStep,
   onUpdateLabel,
   onUnassign,
   onSuggest,
@@ -78,11 +80,18 @@ export default function AnimationPane({
 
               return (
                 <li key={step.id}>
-                  <button
-                    type="button"
+                  <div
                     className={`step-timeline-row ${isEditing ? 'is-editing' : ''} ${isPlaying ? 'is-playing' : ''}`}
                     onClick={() => onEditingIndexChange(index)}
+                    role="button"
+                    tabIndex={0}
                     aria-current={isEditing ? 'step' : undefined}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        onEditingIndexChange(index)
+                      }
+                    }}
                   >
                     <span className="step-timeline-num">{index + 1}</span>
                     <span className="step-timeline-body">
@@ -94,8 +103,34 @@ export default function AnimationPane({
                         {edgeCount !== 1 ? 's' : ''}
                       </span>
                     </span>
+                    <div className="step-row-actions">
+                      <button
+                        type="button"
+                        className="ghost icon-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onMoveStep(step.id, -1)
+                        }}
+                        disabled={index === 0}
+                        aria-label="Move step up"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost icon-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onMoveStep(step.id, 1)
+                        }}
+                        disabled={index === steps.length - 1}
+                        aria-label="Move step down"
+                      >
+                        ↓
+                      </button>
+                    </div>
                     {isPlaying && <span className="step-playing-badge">▶</span>}
-                  </button>
+                  </div>
                 </li>
               )
             })}

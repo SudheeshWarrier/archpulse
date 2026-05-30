@@ -110,6 +110,21 @@ export function injectEdgeHitAreas(container: HTMLElement): () => void {
   return () => hitLayer.remove()
 }
 
+function findArchIdWithinAncestors(element: Element | null): string | null {
+  let current = element
+  while (current) {
+    if (current.hasAttribute('data-arch-id')) {
+      return current.getAttribute('data-arch-id')
+    }
+    const nested = current.querySelector('[data-arch-id]:not([data-arch-hit])') as Element | null
+    if (nested) {
+      return nested.getAttribute('data-arch-id')
+    }
+    current = current.parentElement
+  }
+  return null
+}
+
 export function pickArchElementId(container: HTMLElement, clientX: number, clientY: number): string | null {
   const hits = document.elementsFromPoint(clientX, clientY)
   let edgeId: string | null = null
@@ -118,11 +133,12 @@ export function pickArchElementId(container: HTMLElement, clientX: number, clien
   for (const hit of hits) {
     if (!container.contains(hit)) continue
     const el = hit.closest('[data-arch-id]') as Element | null
-    if (!el || el.hasAttribute('data-arch-skip')) continue
-    const id = el.getAttribute('data-arch-id')
+    const actualEl = el ?? (hit as Element)
+    if (!actualEl || actualEl.hasAttribute('data-arch-skip')) continue
+    const id = el?.getAttribute('data-arch-id') ?? findArchIdWithinAncestors(actualEl)
     if (!id) continue
 
-    if (isEdgeElement(el) || el.hasAttribute('data-arch-hit')) {
+    if (isEdgeElement(actualEl) || actualEl.hasAttribute('data-arch-hit')) {
       edgeId = id
       break
     }
