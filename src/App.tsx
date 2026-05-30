@@ -163,6 +163,9 @@ export default function App() {
             Turn your static architecture diagrams into step-by-step animations that walk teams
             through every cloud, service, and flow.
           </p>
+          <p className="hero-copy-note">
+            Upload an SVG, accept smart step suggestions, then preview the flow with intuitive playback controls.
+          </p>
         </div>
 
         <div className="hero-upload-panel">
@@ -177,6 +180,24 @@ export default function App() {
             <UploadZone onLoad={handleUpload} />
             <SaveLoad state={state} dispatch={dispatch} />
           </div>
+        </div>
+
+        <div className="hero-feature-grid">
+          <article className="feature-card">
+            <p className="feature-label">Fast diagram onboarding</p>
+            <h3>Import from any design tool</h3>
+            <p>Bring in architecture exports from Figma, draw.io, Lucidchart, or any SVG source and start animating instantly.</p>
+          </article>
+          <article className="feature-card">
+            <p className="feature-label">Smart story steps</p>
+            <h3>Auto-suggest animation flow</h3>
+            <p>Let ArchPulse detect nodes and edges, then generate an initial storyboard you can refine with a click.</p>
+          </article>
+          <article className="feature-card">
+            <p className="feature-label">Review with confidence</p>
+            <h3>Preview step-by-step flow</h3>
+            <p>Use playback controls, spacebar play, and arrow navigation to validate every architecture walkthrough.</p>
+          </article>
         </div>
       </header>
 
