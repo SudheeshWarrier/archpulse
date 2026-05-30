@@ -12,6 +12,8 @@ type Props = {
   stepCount: number
   currentStep: number
   disabled?: boolean
+  isMaximized: boolean
+  onToggleMaximize: () => void
 }
 
 export default function Toolbar({
@@ -25,7 +27,9 @@ export default function Toolbar({
   setLoop,
   stepCount,
   currentStep,
-  disabled
+  disabled,
+  isMaximized,
+  onToggleMaximize
 }: Props) {
   return (
     <div className={`playback-bar ${disabled ? 'is-disabled' : ''}`}>
@@ -44,6 +48,14 @@ export default function Toolbar({
         </button>
         <button type="button" className="ghost icon-btn" onClick={onNext} disabled={disabled} aria-label="Next step">
           ▶
+        </button>
+        <button
+          type="button"
+          className="ghost icon-btn maximize-btn"
+          onClick={onToggleMaximize}
+          aria-label={isMaximized ? 'Restore canvas' : 'Maximize canvas'}
+        >
+          {isMaximized ? '⤢' : '⤡'}
         </button>
       </div>
 
