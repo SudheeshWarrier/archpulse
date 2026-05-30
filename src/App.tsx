@@ -9,6 +9,7 @@ import SaveLoad from './components/SaveLoad'
 import { usePlayback } from './hooks/usePlayback'
 import { parseSVG } from './utils/parseSVG'
 import { autoGenerateSteps, buildPlaybackVisualState } from './utils/autoGenerate'
+import logo from './assets/archpulse.png'
 import './animations.css'
 import './styles.css'
 
@@ -20,6 +21,7 @@ export default function App() {
   )
   const [isCanvasMaximized, setIsCanvasMaximized] = useState(false)
   const playback = usePlayback({ stepsCount: state.steps.length })
+  const canvasRef = React.useRef<HTMLDivElement | null>(null)
 
   const hasSvg = Boolean(state.svg)
   const isPlaying = playback.isPlaying
@@ -67,6 +69,9 @@ export default function App() {
       })
       setEditingIndex(0)
       playback.setCurrentStep(0)
+      window.setTimeout(() => {
+        canvasRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 120)
     },
     [dispatch, playback.setCurrentStep]
   )
@@ -146,22 +151,37 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="brand-block">
-          <p className="eyebrow">ArchPulse</p>
-          <h1>Diagram storytelling</h1>
+        <div className="hero-copy-panel">
+          <div className="brand-identity">
+            <img className="brand-logo" src={logo} alt="ArchPulse logo" />
+            <div className="brand-text">
+              <p className="eyebrow">ArchPulse</p>
+              <h1>Convert your architecture diagrams into a story.</h1>
+            </div>
+          </div>
           <p className="hero-copy">
-            Build step-by-step animations on your architecture diagram — select a step, click nodes
-            to highlight and lines to animate flow.
+            Turn your static architecture diagrams into step-by-step animations that walk teams
+            through every cloud, service, and flow.
           </p>
         </div>
-        <div className="header-actions">
-          <UploadZone onLoad={handleUpload} />
-          <SaveLoad state={state} dispatch={dispatch} />
+
+        <div className="hero-upload-panel">
+          <div className="hero-upload-card">
+            <div className="hero-upload-meta">
+              <p className="hero-upload-title">Upload your SVG</p>
+              <p className="hero-upload-description">
+                Use SVG export from draw.io, Figma, or Lucidchart. Drop a file here or choose one
+                from your device to begin.
+              </p>
+            </div>
+            <UploadZone onLoad={handleUpload} />
+            <SaveLoad state={state} dispatch={dispatch} />
+          </div>
         </div>
       </header>
 
       <main className={`editor-workspace${isCanvasMaximized ? ' is-canvas-maximized' : ''}`}>
-        <section className={`canvas-stage${isCanvasMaximized ? ' is-maximized' : ''}`}>
+        <section ref={canvasRef} className={`canvas-stage${isCanvasMaximized ? ' is-maximized' : ''}`}>
           <div className="stage-toolbar">
             <Toolbar
               isPlaying={playback.isPlaying}
