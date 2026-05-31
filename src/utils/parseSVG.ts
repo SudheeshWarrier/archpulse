@@ -4,6 +4,7 @@ const NODE_SHAPE_TAGS = new Set(['rect', 'circle', 'ellipse', 'polygon', 'path']
 const EDGE_SHAPE_TAGS = new Set(['path', 'line', 'polyline'])
 
 const SHAPE_TAGS = new Set(['rect', 'circle', 'ellipse', 'polygon', 'path', 'line', 'polyline'])
+const SVG_DEFINITION_TAGS = new Set(['defs', 'marker', 'clipPath', 'mask', 'pattern', 'symbol'])
 
 function parseViewBox(svgEl: Element): { w: number; h: number } {
   const vb = svgEl.getAttribute('viewBox')
@@ -173,6 +174,40 @@ function stableGroupId(group: Element, type: ElementType, fallbackCounter: numbe
   return base.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_:.]/g, '')
 }
 
+function parseDrawioCellTypes(svgEl: SVGSVGElement): Map<string, ElementType> {
+  const content = svgEl.getAttribute('content')
+  const cellTypes = new Map<string, ElementType>()
+  if (!content) return cellTypes
+
+  const parser = new DOMParser()
+  const decodedContent = parser.parseFromString(`<body>${content}</body>`, 'text/html').body.textContent || ''
+  const doc = parser.parseFromString(decodedContent, 'application/xml')
+  doc.querySelectorAll('mxCell[id]').forEach((cell) => {
+    const id = cell.getAttribute('id')
+    if (!id) return
+    if (cell.getAttribute('edge') === '1') {
+      cellTypes.set(id, 'edge')
+    } else if (cell.getAttribute('vertex') === '1') {
+      cellTypes.set(id, 'node')
+    }
+  })
+  return cellTypes
+}
+
+function isInSvgDefinition(el: Element): boolean {
+  let current: Element | null = el
+  while (current) {
+    if (SVG_DEFINITION_TAGS.has(current.tagName)) return true
+    current = current.parentElement
+  }
+  return false
+}
+
+function pickEdgeShape(shapes: Element[]): Element | null {
+  const candidates = shapes.filter((shape) => EDGE_SHAPE_TAGS.has(shape.tagName.toLowerCase()) && hasStroke(shape))
+  return candidates.find(isEdgeShape) ?? candidates[0] ?? null
+}
+
 interface ParsedNode {
   id: string
   type: 'node'
@@ -223,39 +258,38 @@ function parseDiagramElements(svgEl: SVGSVGElement): ParsedDiagram {
   const nodes: ParsedNode[] = []
   const edges: ParsedEdge[] = []
   let fallbackCounter = 0
+  const drawioCellTypes = parseDrawioCellTypes(svgEl)
 
   for (const group of groups) {
+    const hasStableGroupIdentity = Boolean(
+      group.getAttribute('data-cell-id') || group.getAttribute('data-node-id') || group.getAttribute('id')
+    )
+    const directShapeEls = Array.from(group.children).filter((child) => SHAPE_TAGS.has(child.tagName.toLowerCase()))
+    const isNestedStableGroup = Boolean(group.parentElement?.closest('g[data-cell-id],g[data-node-id]'))
+
+    // If this group is nested inside another stable draw.io group and it has no
+    // stable identity or any direct shape children, skip it. This avoids
+    // incorrectly processing intermediate wrapper groups while preserving
+    // stable groups that wrap their render shapes inside nested containers.
+    if (isNestedStableGroup && !hasStableGroupIdentity && directShapeEls.length === 0) continue
+
+    const hasNestedStableGroup = Boolean(group.querySelector('g[data-cell-id],g[data-node-id]'))
+    if (!hasStableGroupIdentity && directShapeEls.length === 0 && group.querySelector('g')) continue
+    // Preserve stable Draw.io groups that wrap their render shapes in a nested container.
+    // These groups have stable `data-cell-id` identity but no direct shape children.
+
     const shapeEls = Array.from(group.querySelectorAll(Array.from(SHAPE_TAGS).join(',')))
     if (shapeEls.length === 0) continue
 
+    const drawioType = drawioCellTypes.get(group.getAttribute('data-cell-id') || '')
     const filledShapes = shapeEls.filter(isFilledShape)
-    const edgeShapes = shapeEls.filter(isEdgeShape)
-    const hasTextLabel = Boolean(group.querySelector('text'))
+    const edgeShape = pickEdgeShape(shapeEls)
 
     if (isBackgroundGroup(group, parseFloat(svgEl.getAttribute('width') || '1000') * parseFloat(svgEl.getAttribute('height') || '1000') || 1000000)) {
       continue
     }
 
-    if (filledShapes.length > 0) {
-      const shape = filledShapes[0]
-      const node: ParsedNode = {
-        id: stableGroupId(group, 'node', ++fallbackCounter),
-        type: 'node',
-        shapeType: shape.tagName.toLowerCase(),
-        label: getLabel(group),
-        position: getPosition(shape),
-        element: group,
-        metadata: {}
-      }
-      if (group.getAttribute('data-cell-id')) {
-        node.metadata!.dataCellId = group.getAttribute('data-cell-id')!
-      }
-      nodes.push(node)
-      continue
-    }
-
-    if (edgeShapes.length > 0) {
-      const edgeShape = edgeShapes[0]
+    if (drawioType === 'edge' && edgeShape) {
       const pathInfo = getPathInfo(edgeShape)
       const edge: ParsedEdge = {
         id: stableGroupId(group, 'edge', ++fallbackCounter),
@@ -268,7 +302,7 @@ function parseDiagramElements(svgEl: SVGSVGElement): ParsedDiagram {
         },
         source: pathInfo.start,
         target: pathInfo.end,
-        element: group,
+        element: edgeShape,
         metadata: {}
       }
       if (group.getAttribute('data-cell-id')) {
@@ -276,6 +310,83 @@ function parseDiagramElements(svgEl: SVGSVGElement): ParsedDiagram {
       }
       edges.push(edge)
       continue
+    }
+
+    if (filledShapes.length > 0 || drawioType === 'node') {
+      const shape = filledShapes[0]
+      const node: ParsedNode = {
+        id: stableGroupId(group, 'node', ++fallbackCounter),
+        type: 'node',
+        shapeType: (shape ?? shapeEls[0]).tagName.toLowerCase(),
+        label: getLabel(group),
+        position: getPosition(shape ?? shapeEls[0]),
+        element: group,
+        metadata: {}
+      }
+      if (group.getAttribute('data-cell-id')) {
+        node.metadata!.dataCellId = group.getAttribute('data-cell-id')!
+      }
+      nodes.push(node)
+      continue
+    }
+
+    if (edgeShape && isEdgeShape(edgeShape)) {
+      const pathInfo = getPathInfo(edgeShape)
+      const edge: ParsedEdge = {
+        id: stableGroupId(group, 'edge', ++fallbackCounter),
+        type: 'edge',
+        path: pathInfo.path,
+        stroke: {
+          color: getAttributeValue(edgeShape, 'stroke') || undefined,
+          width: getAttributeValue(edgeShape, 'stroke-width') || undefined,
+          dasharray: getAttributeValue(edgeShape, 'stroke-dasharray') || undefined
+        },
+        source: pathInfo.start,
+        target: pathInfo.end,
+        element: edgeShape,
+        metadata: {}
+      }
+      if (group.getAttribute('data-cell-id')) {
+        edge.metadata!.dataCellId = group.getAttribute('data-cell-id')!
+      }
+      edges.push(edge)
+      continue
+    }
+  }
+
+  const looseShapes = Array.from(svgEl.querySelectorAll(Array.from(SHAPE_TAGS).join(','))).filter(
+    (shape) => !shape.closest('g') && !isInSvgDefinition(shape)
+  )
+  for (const shape of looseShapes) {
+    if (isEdgeShape(shape)) {
+      const pathInfo = getPathInfo(shape)
+      edges.push({
+        id: stableGroupId(shape, 'edge', ++fallbackCounter),
+        type: 'edge',
+        path: pathInfo.path,
+        stroke: {
+          color: getAttributeValue(shape, 'stroke') || undefined,
+          width: getAttributeValue(shape, 'stroke-width') || undefined,
+          dasharray: getAttributeValue(shape, 'stroke-dasharray') || undefined
+        },
+        source: pathInfo.start,
+        target: pathInfo.end,
+        element: shape,
+        metadata: {}
+      })
+      continue
+    }
+
+    if (isFilledShape(shape)) {
+      nodes.push({
+        id: stableGroupId(shape, 'node', ++fallbackCounter),
+        type: 'node',
+        shapeType: shape.tagName.toLowerCase(),
+        label: '',
+        position: getPosition(shape),
+        element: shape,
+        metadata: {}
+      })
     }
   }
 

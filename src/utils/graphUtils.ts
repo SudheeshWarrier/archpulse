@@ -159,6 +159,10 @@ export interface GraphEdge {
   to: string
 }
 
+/**
+ * @deprecated Use `parseMxGraph` + `buildGraphFromModel` in `autoGenerate.ts` for Draw.io model-based graph extraction.
+ * This legacy fallback performs geometric heuristics on the rendered SVG.
+ */
 export function buildAdjacencyList(
   svgString: string,
   elements: Record<string, ArchElement>

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo, useState } from 'react'
 import { AnimationStep, ArchElement } from '../types'
 
 type Props = {
@@ -37,7 +37,19 @@ export default function AnimationPane({
   onSuggest,
   hasSvg
 }: Props) {
+  const [searchTerm, setSearchTerm] = useState('')
   const activeStep = steps[editingIndex] ?? null
+
+  const filteredSteps = useMemo(() => {
+    const normalized = searchTerm.trim().toLowerCase()
+    if (!normalized) return steps
+    return steps.filter((step, index) => {
+      return (
+        step.label.toLowerCase().includes(normalized) ||
+        `${index + 1}`.includes(normalized)
+      )
+    })
+  }, [searchTerm, steps])
 
   return (
     <aside className="animation-pane">
@@ -47,11 +59,11 @@ export default function AnimationPane({
           <p>{steps.length > 0 ? `${steps.length} steps` : 'Select a step, then click the canvas.'}</p>
         </div>
         <div className="animation-pane-actions">
-          <button type="button" className="ghost" onClick={onAdd} disabled={!hasSvg}>
+          <button type="button" className="ghost compact" onClick={onAdd} disabled={!hasSvg}>
             <span className="material-icons" aria-hidden="true">add</span>
-            Step
+            Add stop
           </button>
-          <button type="button" className="secondary" onClick={onSuggest} disabled={!hasSvg}>
+          <button type="button" className="secondary compact" onClick={onSuggest} disabled={!hasSvg}>
             <span className="material-icons" aria-hidden="true">auto_awesome</span>
             Suggest
           </button>
@@ -73,88 +85,105 @@ export default function AnimationPane({
 
       {steps.length > 0 && (
         <div className="animation-pane-body">
-          <ol className="step-timeline" aria-label="Animation steps">
-            {steps.map((step, index) => {
-              const isEditing = index === editingIndex
-              const isPlaying = playingIndex === index
-              const nodeCount = step.highlight.length
-              const edgeCount = step.flow.length
+          <div className="step-search">
+            <label className="sr-only" htmlFor="step-search-input">
+              Search animation steps
+            </label>
+            <input
+              id="step-search-input"
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search steps"
+            />
+          </div>
+          {filteredSteps.length === 0 ? (
+            <div className="step-search-empty">No steps match your search.</div>
+          ) : (
+            <ol className="step-timeline" aria-label="Animation steps">
+              {filteredSteps.map((step) => {
+                const stepIndex = steps.findIndex((source) => source.id === step.id)
+                const isEditing = stepIndex === editingIndex
+                const isPlaying = playingIndex === stepIndex
+                const nodeCount = step.highlight.length
+                const edgeCount = step.flow.length
 
-              return (
-                <li key={step.id}>
-                  <div
-                    className={`step-timeline-row ${isEditing ? 'is-editing' : ''} ${isPlaying ? 'is-playing' : ''}`}
-                    onClick={() => onEditingIndexChange(index)}
-                    role="button"
-                    tabIndex={0}
-                    aria-current={isEditing ? 'step' : undefined}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        onEditingIndexChange(index)
-                      }
-                    }}
-                  >
-                    <span className="step-timeline-num">{index + 1}</span>
-                    <span className="step-timeline-body">
-                      <span className="step-timeline-label">
-                        {step.label || `Animation ${index + 1}`}
+                return (
+                  <li key={step.id}>
+                    <div
+                      className={`step-timeline-row ${isEditing ? 'is-editing' : ''} ${isPlaying ? 'is-playing' : ''}`}
+                      onClick={() => onEditingIndexChange(stepIndex)}
+                      role="button"
+                      tabIndex={0}
+                      aria-current={isEditing ? 'step' : undefined}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          onEditingIndexChange(stepIndex)
+                        }
+                      }}
+                    >
+                      <span className="step-timeline-num">{stepIndex + 1}</span>
+                      <span className="step-timeline-body">
+                        <span className="step-timeline-label">
+                          {step.label || `Animation ${stepIndex + 1}`}
+                        </span>
+                        <span className="step-timeline-meta">
+                          {nodeCount} node{nodeCount !== 1 ? 's' : ''} · {edgeCount} line
+                          {edgeCount !== 1 ? 's' : ''}
+                        </span>
                       </span>
-                      <span className="step-timeline-meta">
-                        {nodeCount} node{nodeCount !== 1 ? 's' : ''} · {edgeCount} line
-                        {edgeCount !== 1 ? 's' : ''}
-                      </span>
-                    </span>
-                    <div className="step-row-actions">
-                      <button
-                        type="button"
-                        className="ghost icon-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onMoveStep(step.id, -1)
-                        }}
-                        disabled={index === 0}
-                        aria-label="Move step up"
-                        title="Move step up"
-                      >
-                        <span className="material-icons" aria-hidden="true">arrow_upward</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="ghost icon-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onMoveStep(step.id, 1)
-                        }}
-                        disabled={index === steps.length - 1}
-                        aria-label="Move step down"
-                        title="Move step down"
-                      >
-                        <span className="material-icons" aria-hidden="true">arrow_downward</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="ghost icon-btn danger-text"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onRemove(step.id)
-                        }}
-                        aria-label="Delete step"
-                        title="Delete step"
-                      >
-                        <span className="material-icons" aria-hidden="true">delete</span>
-                      </button>
+                      <div className="step-row-actions">
+                        <button
+                          type="button"
+                          className="ghost icon-btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onMoveStep(step.id, -1)
+                          }}
+                          disabled={stepIndex === 0}
+                          aria-label="Move step up"
+                          title="Move step up"
+                        >
+                          <span className="material-icons" aria-hidden="true">arrow_upward</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost icon-btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onMoveStep(step.id, 1)
+                          }}
+                          disabled={stepIndex === steps.length - 1}
+                          aria-label="Move step down"
+                          title="Move step down"
+                        >
+                          <span className="material-icons" aria-hidden="true">arrow_downward</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost icon-btn danger-text"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onRemove(step.id)
+                          }}
+                          aria-label="Delete step"
+                          title="Delete step"
+                        >
+                          <span className="material-icons" aria-hidden="true">delete</span>
+                        </button>
+                      </div>
+                      {isPlaying && (
+                        <span className="step-playing-badge" aria-label="Playing">
+                          <span className="material-icons" aria-hidden="true">play_arrow</span>
+                        </span>
+                      )}
                     </div>
-                    {isPlaying && (
-                      <span className="step-playing-badge" aria-label="Playing">
-                        <span className="material-icons" aria-hidden="true">play_arrow</span>
-                      </span>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ol>
+                  </li>
+                )
+              })}
+            </ol>
+          )}
 
           {activeStep && (
             <div className="step-detail">
