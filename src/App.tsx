@@ -9,12 +9,34 @@ import SaveLoad from './components/SaveLoad'
 import { usePlayback } from './hooks/usePlayback'
 import { parseSVG } from './utils/parseSVG'
 import { autoGenerateSteps, buildPlaybackVisualState } from './utils/autoGenerate'
-import { AnimationStep, SuggestScope } from './types'
+import { AnimationStep, EdgeAnimation, NodeAnimation, SuggestScope } from './types'
 import logo from './assets/archpulse.png'
 import './animations.css'
 import './styles.css'
 
 type ThemePreference = 'system' | 'light' | 'dark'
+
+const NODE_ANIMATION_OPTIONS: { value: NodeAnimation; label: string }[] = [
+  { value: 'highlight', label: 'Highlight (Glow)' },
+  { value: 'fade-in', label: 'Fade In' },
+  { value: 'scale-up', label: 'Scale Up' },
+  { value: 'color-change', label: 'Color Change' },
+  { value: 'bounce', label: 'Bounce' },
+  { value: 'pulse-grow', label: 'Pulse Grow' },
+  { value: 'rotate', label: 'Rotate' },
+  { value: 'blink', label: 'Blink' }
+]
+
+const EDGE_ANIMATION_OPTIONS: { value: EdgeAnimation; label: string }[] = [
+  { value: 'draw-path', label: 'Draw Path' },
+  { value: 'flow', label: 'Flow Along Path' },
+  { value: 'fade-in', label: 'Fade In' },
+  { value: 'pulse', label: 'Pulse' },
+  { value: 'dash-flow', label: 'Dash Flow' },
+  { value: 'glow-pulse', label: 'Glow Pulse' },
+  { value: 'wave', label: 'Wave' },
+  { value: 'shimmer', label: 'Shimmer' }
+]
 
 export default function App() {
   const [state, dispatch] = useProjectReducer()
@@ -22,6 +44,8 @@ export default function App() {
   const [suggestedSteps, setSuggestedSteps] = useState<ReturnType<typeof autoGenerateSteps> | null>(
     null
   )
+  const [suggestedNodeAnimation, setSuggestedNodeAnimation] = useState<NodeAnimation>('highlight')
+  const [suggestedEdgeAnimation, setSuggestedEdgeAnimation] = useState<EdgeAnimation>('draw-path')
   const [isSuggestScopeOpen, setIsSuggestScopeOpen] = useState(false)
   const [isCanvasMaximized, setIsCanvasMaximized] = useState(false)
   const [themePreference, setThemePreference] = useState<ThemePreference>('system')
@@ -122,7 +146,9 @@ export default function App() {
           payload: {
             label: 'First animation',
             highlight: state.elements[elementId]?.type === 'node' ? [elementId] : [],
-            flow: state.elements[elementId]?.type === 'edge' ? [elementId] : []
+            flow: state.elements[elementId]?.type === 'edge' ? [elementId] : [],
+            nodeAnimation: state.elements[elementId]?.type === 'node' ? 'highlight' : 'highlight',
+            edgeAnimation: state.elements[elementId]?.type === 'edge' ? 'draw-path' : 'draw-path'
           }
         })
         setEditingIndex(0)
@@ -138,13 +164,17 @@ export default function App() {
 
   const generateSuggestion = useCallback((scope: SuggestScope) => {
     if (!state.svg) return
-    const steps = autoGenerateSteps(state.svg, state.elements, scope)
+    const steps = autoGenerateSteps(state.svg, state.elements, scope).map((step) => ({
+      ...step,
+      nodeAnimation: suggestedNodeAnimation,
+      edgeAnimation: suggestedEdgeAnimation
+    }))
     if (steps.length === 0) {
       alert('Could not detect animatable elements in this diagram.')
       return
     }
     setSuggestedSteps(steps)
-  }, [state.elements, state.svg])
+  }, [state.elements, state.svg, suggestedEdgeAnimation, suggestedNodeAnimation])
 
   const handleSuggest = useCallback(() => {
     if (!state.svg) return
@@ -173,12 +203,22 @@ export default function App() {
   )
 
   const acceptSuggestion = useCallback((steps: AnimationStep[]) => {
-    const renumberedSteps = steps.map((step, index) => ({ ...step, id: `step-${index + 1}` }))
+    // Ensure every step has a unique, sequential id before storing
+    const renumberedSteps = steps.map((step, index) => ({
+      ...step,
+      id: `step-${index + 1}`
+    }))
+    // Replace the whole steps array in state
     dispatch({ type: 'SET_STEPS', payload: renumberedSteps })
+    // Reset UI state so the editor points at the first step
     setEditingIndex(0)
     playback.setCurrentStep(0)
+    // Close the suggestion modal
     setSuggestedSteps(null)
-  }, [dispatch, playback])
+    // Reset the animation selectors for the next suggestion round
+    setSuggestedNodeAnimation('highlight')
+    setSuggestedEdgeAnimation('draw-path')
+  }, [dispatch, playback, setSuggestedNodeAnimation, setSuggestedEdgeAnimation])
 
   const editingStep = state.steps[editingIndex] ?? null
   const playbackVisual = useMemo(
@@ -326,6 +366,12 @@ export default function App() {
           onUpdateLabel={(stepId, label) =>
             dispatch({ type: 'UPDATE_STEP', payload: { stepId, label } })
           }
+          onUpdateNodeAnimation={(stepId, nodeAnimation) =>
+            dispatch({ type: 'UPDATE_STEP', payload: { stepId, nodeAnimation } })
+          }
+          onUpdateEdgeAnimation={(stepId, edgeAnimation) =>
+            dispatch({ type: 'UPDATE_STEP', payload: { stepId, edgeAnimation } })
+          }
           onUnassign={(stepId, elementId) =>
             dispatch({ type: 'UNASSIGN_ELEMENT', payload: { stepId, elementId } })
           }
@@ -366,32 +412,71 @@ export default function App() {
 
       {isSuggestScopeOpen && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="suggest-scope-title">
-          <div className="modal-card">
+          <div className="modal-card suggest-modal">
             <header className="modal-header">
-              <h3 id="suggest-scope-title">Suggest animation for</h3>
-              <p>Choose which diagram elements should be used for this generated sequence.</p>
+              <h3 id="suggest-scope-title">Suggest animation sequence</h3>
+              <p>Choose animation styles and which elements to animate</p>
             </header>
 
-            <div className="suggest-scope-grid">
-              {[
-                { value: 'all', icon: 'account_tree', title: 'All', meta: 'Nodes and lines' },
-                { value: 'edges', icon: 'timeline', title: 'Lines only', meta: 'Flow steps' },
-                { value: 'nodes', icon: 'category', title: 'Nodes only', meta: 'Highlight steps' }
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className="suggest-scope-option"
-                  onClick={() => {
-                    setIsSuggestScopeOpen(false)
-                    generateSuggestion(option.value as SuggestScope)
-                  }}
-                >
-                  <span className="material-icons" aria-hidden="true">{option.icon}</span>
-                  <strong>{option.title}</strong>
-                  <span>{option.meta}</span>
-                </button>
-              ))}
+            <div className="suggest-content">
+              <section className="suggest-section">
+                <h4 className="suggest-section-title">Animation Styles</h4>
+                <div className="suggest-animation-row">
+                  <label className="animation-field">
+                    <span className="field-name">For Shapes</span>
+                    <select
+                      value={suggestedNodeAnimation}
+                      onChange={(event) => setSuggestedNodeAnimation(event.target.value as NodeAnimation)}
+                      className="animation-select"
+                    >
+                      {NODE_ANIMATION_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="animation-field">
+                    <span className="field-name">For Lines</span>
+                    <select
+                      value={suggestedEdgeAnimation}
+                      onChange={(event) => setSuggestedEdgeAnimation(event.target.value as EdgeAnimation)}
+                      className="animation-select"
+                    >
+                      {EDGE_ANIMATION_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </section>
+
+              <section className="suggest-section">
+                <h4 className="suggest-section-title">Diagram Scope</h4>
+                <div className="suggest-scope-grid">
+                  {[
+                    { value: 'all', icon: 'account_tree', title: 'All', meta: 'Nodes and lines' },
+                    { value: 'nodes', icon: 'category', title: 'Shapes only', meta: 'Highlight steps' },
+                    { value: 'edges', icon: 'timeline', title: 'Lines only', meta: 'Flow steps' }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className="suggest-scope-option"
+                      onClick={() => {
+                        setIsSuggestScopeOpen(false)
+                        generateSuggestion(option.value as SuggestScope)
+                      }}
+                    >
+                      <span className="material-icons" aria-hidden="true">{option.icon}</span>
+                      <strong>{option.title}</strong>
+                      <span>{option.meta}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
             </div>
 
             <footer className="modal-footer">

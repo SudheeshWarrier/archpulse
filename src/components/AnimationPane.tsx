@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { AnimationStep, ArchElement } from '../types'
+import { AnimationStep, ArchElement, EdgeAnimation, NodeAnimation } from '../types'
 
 type Props = {
   steps: AnimationStep[]
@@ -11,6 +11,8 @@ type Props = {
   onRemove: (id: string) => void
   onMoveStep: (stepId: string, direction: -1 | 1) => void
   onUpdateLabel: (stepId: string, label: string) => void
+  onUpdateNodeAnimation: (stepId: string, value: NodeAnimation) => void
+  onUpdateEdgeAnimation: (stepId: string, value: EdgeAnimation) => void
   onUnassign: (stepId: string, elementId: string) => void
   onSuggest: () => void
   hasSvg: boolean
@@ -131,6 +133,8 @@ export default function AnimationPane({
                         <span className="step-timeline-meta">
                           {nodeCount} node{nodeCount !== 1 ? 's' : ''} · {edgeCount} line
                           {edgeCount !== 1 ? 's' : ''}
+                          {nodeCount > 0 ? ` · ${step.nodeAnimation}` : ''}
+                          {edgeCount > 0 ? ` · ${step.edgeAnimation}` : ''}
                         </span>
                       </span>
                       <div className="step-row-actions">
@@ -208,6 +212,51 @@ export default function AnimationPane({
                   placeholder="Describe this animation step"
                 />
               </label>
+
+              <div className="step-animation-fields">
+                <label className="field-label">
+                  <span className="field-label-text">Shape animation</span>
+                  <select
+                    value={activeStep.nodeAnimation}
+                    onChange={(e) => onUpdateNodeAnimation(activeStep.id, e.target.value as NodeAnimation)}
+                    title={`${activeStep.highlight.length} shape(s) selected`}
+                  >
+                    <option value="highlight">Highlight (Glow)</option>
+                    <option value="fade-in">Fade In</option>
+                    <option value="scale-up">Scale Up</option>
+                    <option value="color-change">Color Change</option>
+                    <option value="bounce">Bounce</option>
+                    <option value="pulse-grow">Pulse Grow</option>
+                    <option value="rotate">Rotate</option>
+                    <option value="blink">Blink</option>
+                  </select>
+                  {activeStep.highlight.length === 0 && (
+                    <span className="field-hint">Click shapes on canvas to assign</span>
+                  )}
+                </label>
+
+                <label className="field-label">
+                  <span className="field-label-text">Line animation</span>
+                  <select
+                    value={activeStep.edgeAnimation}
+                    onChange={(e) => onUpdateEdgeAnimation(activeStep.id, e.target.value as EdgeAnimation)}
+                    disabled={activeStep.flow.length === 0}
+                    title={`${activeStep.flow.length} line(s) selected`}
+                  >
+                    <option value="draw-path">Draw Path</option>
+                    <option value="flow">Flow Along Path</option>
+                    <option value="fade-in">Fade In</option>
+                    <option value="pulse">Pulse</option>
+                    <option value="dash-flow">Dash Flow</option>
+                    <option value="glow-pulse">Glow Pulse</option>
+                    <option value="wave">Wave</option>
+                    <option value="shimmer">Shimmer</option>
+                  </select>
+                  {activeStep.flow.length === 0 && (
+                    <span className="field-hint">Click connector lines on canvas to assign</span>
+                  )}
+                </label>
+              </div>
 
               <div className="assignment-hint">
                 <span className="hint-chip hint-chip-node">Shapes → highlight</span>

@@ -54,6 +54,11 @@ export default function AutoSuggestModal({ steps, onAccept, onReject }: Props) {
                   {step.highlight.length} node{step.highlight.length !== 1 ? 's' : ''},{' '}
                   {step.flow.length} line{step.flow.length !== 1 ? 's' : ''}
                 </span>
+                <span className="suggest-preview-meta">
+                  {step.highlight.length > 0 ? `Node animation: ${step.nodeAnimation}` : ''}
+                  {step.highlight.length > 0 && step.flow.length > 0 ? ' · ' : ''}
+                  {step.flow.length > 0 ? `Line animation: ${step.edgeAnimation}` : ''}
+                </span>
               </div>
             </li>
           ))}

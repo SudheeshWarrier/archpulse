@@ -12,6 +12,8 @@ export const AnimationStepSchema = z.object({
   label: z.string(),
   highlight: z.array(z.string()),
   flow: z.array(z.string()),
+  nodeAnimation: z.enum(['highlight', 'fade-in', 'scale-up', 'color-change', 'bounce', 'pulse-grow', 'rotate', 'blink']),
+  edgeAnimation: z.enum(['draw-path', 'flow', 'fade-in', 'pulse', 'dash-flow', 'glow-pulse', 'wave', 'shimmer']),
   durationMs: z.number()
 })
 

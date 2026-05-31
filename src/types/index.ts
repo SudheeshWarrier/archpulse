@@ -54,11 +54,33 @@ export interface Graph {
   danglingEdges: GraphEdge[]
 }
 
+export type NodeAnimation = 
+  | 'highlight' 
+  | 'fade-in' 
+  | 'scale-up' 
+  | 'color-change'
+  | 'bounce'
+  | 'pulse-grow'
+  | 'rotate'
+  | 'blink'
+
+export type EdgeAnimation = 
+  | 'draw-path' 
+  | 'flow' 
+  | 'fade-in' 
+  | 'pulse'
+  | 'dash-flow'
+  | 'glow-pulse'
+  | 'wave'
+  | 'shimmer'
+
 export interface AnimationStep {
   id: string
   label: string
   highlight: string[]
   flow: string[]
+  nodeAnimation: NodeAnimation
+  edgeAnimation: EdgeAnimation
   durationMs: number
 }
 
