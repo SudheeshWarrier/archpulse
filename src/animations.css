@@ -13,9 +13,128 @@
   }
 }
 
+@keyframes arch-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes arch-scale-up {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.2);
+  }
+}
+
+@keyframes arch-color-change {
+  0%,
+  100% {
+    filter: saturate(1);
+  }
+  50% {
+    filter: saturate(1.5) hue-rotate(20deg);
+  }
+}
+
+@keyframes arch-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-8px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+  75% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes arch-pulse-grow {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes arch-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes arch-blink {
+  0%,
+  49%,
+  100% {
+    opacity: 1;
+  }
+  50%,
+  99% {
+    opacity: 0.3;
+  }
+}
+
 @keyframes arch-flow {
   to {
     stroke-dashoffset: 0;
+  }
+}
+
+@keyframes arch-dash-flow {
+  0% {
+    stroke-dashoffset: 50;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes arch-glow-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2px var(--arch-flow-color));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px var(--arch-flow-color));
+  }
+}
+
+@keyframes arch-wave {
+  0% {
+    stroke-dashoffset: -100;
+  }
+  100% {
+    stroke-dashoffset: 100;
+  }
+}
+
+@keyframes arch-shimmer {
+  0% {
+    stroke-dasharray: 10, 10;
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dasharray: 10, 10;
+    stroke-dashoffset: 200;
   }
 }
 
@@ -74,12 +193,79 @@ polyline[data-arch-id] {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .arch-highlighted {
+  /* Node animations */
+  .arch-highlighted[data-node-animation="highlight"],
+  .arch-highlighted:not([data-node-animation]) {
     animation: arch-highlight 1.5s ease-in-out infinite;
   }
 
-  .arch-flowing {
+  .arch-highlighted[data-node-animation="fade-in"] {
+    animation: arch-fade-in 0.8s ease-in;
+  }
+
+  .arch-highlighted[data-node-animation="scale-up"] {
+    animation: arch-scale-up 1s ease-in-out infinite;
+  }
+
+  .arch-highlighted[data-node-animation="color-change"] {
+    animation: arch-color-change 1.5s ease-in-out infinite;
+  }
+
+  .arch-highlighted[data-node-animation="bounce"] {
+    animation: arch-bounce 0.8s ease-in-out infinite;
+  }
+
+  .arch-highlighted[data-node-animation="pulse-grow"] {
+    animation: arch-pulse-grow 1.2s ease-in-out infinite;
+  }
+
+  .arch-highlighted[data-node-animation="rotate"] {
+    animation: arch-rotate 2s linear infinite;
+  }
+
+  .arch-highlighted[data-node-animation="blink"] {
+    animation: arch-blink 1s ease-in-out infinite;
+  }
+
+  /* Edge animations */
+  .arch-flowing[data-edge-animation="draw-path"],
+  .arch-flowing:not([data-edge-animation]) {
     animation: arch-flow 1.2s linear forwards;
+    stroke: var(--primary-color) !important;
+  }
+
+  .arch-flowing[data-edge-animation="flow"] {
+    animation: arch-flow 1.2s linear forwards;
+    stroke: var(--primary-color) !important;
+  }
+
+  .arch-flowing[data-edge-animation="fade-in"] {
+    animation: arch-fade-in 0.8s ease-in;
+    stroke: var(--primary-color) !important;
+  }
+
+  .arch-flowing[data-edge-animation="pulse"] {
+    animation: arch-glow-pulse 1.5s ease-in-out infinite;
+    stroke: var(--primary-color) !important;
+  }
+
+  .arch-flowing[data-edge-animation="dash-flow"] {
+    animation: arch-dash-flow 1.5s ease-in-out forwards;
+    stroke: var(--primary-color) !important;
+  }
+
+  .arch-flowing[data-edge-animation="glow-pulse"] {
+    animation: arch-glow-pulse 1.5s ease-in-out infinite;
+    stroke: var(--primary-color) !important;
+  }
+
+  .arch-flowing[data-edge-animation="wave"] {
+    animation: arch-wave 2s ease-in-out infinite;
+    stroke: var(--primary-color) !important;
+  }
+
+  .arch-flowing[data-edge-animation="shimmer"] {
+    animation: arch-shimmer 2s ease-in-out infinite;
     stroke: var(--primary-color) !important;
   }
 }

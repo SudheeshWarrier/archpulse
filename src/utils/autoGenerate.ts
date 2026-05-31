@@ -1,10 +1,12 @@
 import {
   AnimationStep,
   ArchElement,
+  EdgeAnimation,
   Graph,
   GraphEdge,
   MxCell,
   MxGraphModel,
+  NodeAnimation,
   SuggestScope
 } from '../types'
 import { buildAdjacencyList, GraphEdge as LegacyGraphEdge } from './graphUtils'
@@ -190,6 +192,8 @@ function appendFlowStep(
     label: `${labelPrefix} ${nodeLabel(elements, edge.to)}`,
     highlight: [edge.to],
     flow: [edge.edgeId],
+    nodeAnimation: 'highlight',
+    edgeAnimation: 'draw-path',
     durationMs: 1400
   })
 }
@@ -250,6 +254,8 @@ export function autoGenerateSteps(
               label: `Highlight ${node.label}`,
               highlight: nodeToArchId.has(node.id) ? [nodeToArchId.get(node.id)!] : [],
               flow: [],
+              nodeAnimation: 'highlight',
+              edgeAnimation: 'draw-path',
               durationMs: 1200
             }))
           )
@@ -265,6 +271,8 @@ export function autoGenerateSteps(
             label: chunk.length === 1 ? `Highlight ${chunk[0].label}` : `Highlight group ${steps.length + 1}`,
             highlight: highlightIds,
             flow: [],
+            nodeAnimation: 'highlight',
+            edgeAnimation: 'draw-path',
             durationMs: 1200
           })
         }
@@ -278,6 +286,8 @@ export function autoGenerateSteps(
             label: `Animate ${edge.label}`,
             highlight: [],
             flow: [flowId],
+            nodeAnimation: 'highlight',
+            edgeAnimation: 'draw-path',
             durationMs: 1400
           })
         })
@@ -292,6 +302,8 @@ export function autoGenerateSteps(
               label: `Animate ${edge.label}`,
               highlight: [],
               flow: edgeToArchId.has(edge.id) ? [edgeToArchId.get(edge.id)!] : [],
+              nodeAnimation: 'highlight' as NodeAnimation,
+              edgeAnimation: 'draw-path' as EdgeAnimation,
               durationMs: 1400
             })),
             ...graph.danglingEdges
@@ -300,6 +312,8 @@ export function autoGenerateSteps(
                 label: `Animate ${edge.label}`,
                 highlight: [],
                 flow: edgeToArchId.has(edge.id) ? [edgeToArchId.get(edge.id)!] : [],
+                nodeAnimation: 'highlight' as NodeAnimation,
+                edgeAnimation: 'draw-path' as EdgeAnimation,
                 durationMs: 1400
               }))
               .filter((step) => step.flow.length > 0)
@@ -335,6 +349,8 @@ export function autoGenerateSteps(
           label: `Highlight ${getNodeLabel(nodeId)}`,
           highlight: [archId],
           flow: [],
+          nodeAnimation: 'highlight',
+          edgeAnimation: 'draw-path',
           durationMs: 1200
         })
       }
@@ -350,6 +366,8 @@ export function autoGenerateSteps(
           label: `${prefix} ${getNodeLabel(edge.target)}`,
           highlight: targetId ? [targetId] : [],
           flow: flowId ? [flowId] : [],
+          nodeAnimation: 'highlight',
+          edgeAnimation: 'draw-path',
           durationMs: 1400
         })
       }
@@ -386,6 +404,8 @@ export function autoGenerateSteps(
           label: `Animate ${edge.label}`,
           highlight: [],
           flow: [flowId],
+          nodeAnimation: 'highlight',
+          edgeAnimation: 'draw-path',
           durationMs: 1400
         })
       })
@@ -399,6 +419,8 @@ export function autoGenerateSteps(
             .map((node) => nodeToArchId.get(node.id))
             .filter(Boolean) as string[],
           flow: [],
+          nodeAnimation: 'highlight',
+          edgeAnimation: 'draw-path',
           durationMs: 1200
         })
       }
@@ -422,6 +444,8 @@ export function autoGenerateSteps(
             : `Highlight group ${steps.length + 1}`,
         highlight: chunk,
         flow: [],
+        nodeAnimation: 'highlight',
+        edgeAnimation: 'draw-path',
         durationMs: 1200
       })
     }
@@ -433,6 +457,8 @@ export function autoGenerateSteps(
         label: `Animate line ${nodeLabel(elements, edgeId).replace('shape', 'line')}`,
         highlight: [],
         flow: [edgeId],
+        nodeAnimation: 'highlight',
+        edgeAnimation: 'draw-path',
         durationMs: 1400
       })
     }
@@ -447,6 +473,8 @@ export function autoGenerateSteps(
           label: `Animate ${nodeLabel(elements, edge.edgeId).replace('shape', 'line')}`,
           highlight: [],
           flow: [edge.edgeId],
+          nodeAnimation: 'highlight' as NodeAnimation,
+          edgeAnimation: 'draw-path' as EdgeAnimation,
           durationMs: 1400
         })),
         ...unmatchedEdgeIds.map((edgeId) => ({
@@ -454,6 +482,8 @@ export function autoGenerateSteps(
           label: `Animate ${nodeLabel(elements, edgeId).replace('shape', 'line')}`,
           highlight: [],
           flow: [edgeId],
+          nodeAnimation: 'highlight' as NodeAnimation,
+          edgeAnimation: 'draw-path' as EdgeAnimation,
           durationMs: 1400
         }))
       ]
@@ -483,6 +513,8 @@ export function autoGenerateSteps(
         label: `Start at ${nodeLabel(elements, startNode)}`,
         highlight: [startNode],
         flow: [],
+        nodeAnimation: 'highlight',
+        edgeAnimation: 'draw-path',
         durationMs: 1200
       })
     }
@@ -521,6 +553,8 @@ export function autoGenerateSteps(
       label: `Animate ${nodeLabel(elements, edgeId)}`,
       highlight: [],
       flow: [edgeId],
+      nodeAnimation: 'highlight',
+      edgeAnimation: 'draw-path',
       durationMs: 1400
     })
   }
@@ -532,6 +566,8 @@ export function autoGenerateSteps(
       label: 'Remaining nodes',
       highlight: unvisitedNodes,
       flow: [],
+      nodeAnimation: 'highlight',
+      edgeAnimation: 'draw-path',
       durationMs: 1200
     })
   }
@@ -547,6 +583,8 @@ export function buildPlaybackVisualState(
   seenFlow: string[]
   currentHighlight: string[]
   currentFlow: string[]
+  nodeAnimationType?: string
+  edgeAnimationType?: string
   label?: string
 } {
   const seenHighlight = new Set<string>()
@@ -563,6 +601,8 @@ export function buildPlaybackVisualState(
     seenFlow: [...seenFlow],
     currentHighlight: current?.highlight ?? [],
     currentFlow: current?.flow ?? [],
+    nodeAnimationType: current?.nodeAnimation,
+    edgeAnimationType: current?.edgeAnimation,
     label: current?.label
   }
 }

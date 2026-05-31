@@ -8,6 +8,8 @@ export type PlaybackVisualState = {
   seenFlow: string[]
   currentHighlight: string[]
   currentFlow: string[]
+  nodeAnimationType?: string
+  edgeAnimationType?: string
   label?: string
 }
 
@@ -104,7 +106,12 @@ export default function SVGCanvas({ svg, mode, onElementClick, activeStep, playb
 
       currentHighlight.forEach((id) => {
         const node = el.querySelector(`[data-arch-id="${id}"]:not([data-arch-hit])`)
-        if (node) node.classList.add('arch-highlighted')
+        if (node) {
+          node.classList.add('arch-highlighted')
+          if (playbackState.nodeAnimationType) {
+            node.setAttribute('data-node-animation', playbackState.nodeAnimationType)
+          }
+        }
       })
 
       currentFlow.forEach((id) => {
@@ -112,6 +119,9 @@ export default function SVGCanvas({ svg, mode, onElementClick, activeStep, playb
         if (node) {
           setupFlowPath(node, false)
           node.classList.add('arch-flowing')
+          if (playbackState.edgeAnimationType) {
+            node.setAttribute('data-edge-animation', playbackState.edgeAnimationType)
+          }
         }
       })
     }

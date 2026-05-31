@@ -14,7 +14,7 @@ type Action =
   | { type: 'ADD_STEP'; payload?: Partial<AnimationStep> }
   | { type: 'REMOVE_STEP'; payload: string }
   | { type: 'REORDER_STEPS'; payload: string[] }
-  | { type: 'UPDATE_STEP'; payload: { stepId: string; label?: string } }
+  | { type: 'UPDATE_STEP'; payload: { stepId: string; label?: string; nodeAnimation?: string; edgeAnimation?: string } }
   | { type: 'ASSIGN_ELEMENT'; payload: { stepId: string; elementId: string } }
   | { type: 'UNASSIGN_ELEMENT'; payload: { stepId: string; elementId: string } }
   | { type: 'SET_STEPS'; payload: AnimationStep[] }
@@ -34,6 +34,8 @@ function reducer(state: ProjectState, action: Action): ProjectState {
         label: action.payload?.label ?? `Animation ${state.steps.length + 1}`,
         highlight: action.payload?.highlight ?? [],
         flow: action.payload?.flow ?? [],
+        nodeAnimation: action.payload?.nodeAnimation ?? 'highlight',
+        edgeAnimation: action.payload?.edgeAnimation ?? 'draw-path',
         durationMs: action.payload?.durationMs ?? 1200
       }
       return { ...state, steps: [...state.steps, step] }
@@ -46,10 +48,13 @@ function reducer(state: ProjectState, action: Action): ProjectState {
         steps: action.payload.map((id) => state.steps.find((s) => s.id === id)!).filter(Boolean)
       }
     case 'UPDATE_STEP':
+      // Merge the provided fields directly onto the matching step.
+      // This ensures nodeAnimation and edgeAnimation are updated correctly
+      // even when other fields (label, duration, etc.) are omitted.
       return {
         ...state,
         steps: state.steps.map((s) =>
-          s.id === action.payload.stepId ? { ...s, label: action.payload.label ?? s.label } : s
+          s.id === action.payload.stepId ? { ...s, ...action.payload } : s
         )
       }
     case 'ASSIGN_ELEMENT': {
