@@ -119,6 +119,9 @@ function ensureSvgFrameStyles(svgString: string, playbackState: ReturnType<typeo
   const doc = parser.parseFromString(svgString, 'image/svg+xml')
   const svgEl = doc.querySelector('svg')
   if (!svgEl) return svgString
+  svgEl.setAttribute('font-family', "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif")
+  svgEl.setAttribute('color', '#000000')
+  svgEl.setAttribute('text-rendering', 'geometricPrecision')
 
   const seenHighlightSet = new Set(playbackState.seenHighlight)
   const seenFlowSet = new Set(playbackState.seenFlow)
@@ -197,6 +200,8 @@ function buildScaledImageData(svgString: string, width: number, height: number):
         reject(new Error('Unable to create canvas context'))
         return
       }
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
       ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, width, height)
       ctx.drawImage(image, 0, 0, width, height)
@@ -389,7 +394,7 @@ export async function exportAnimatedGif(svg: string, steps: AnimationStep[]) {
 
   const { width, height } = parseSvgSize(svg)
   const maxSize = 760
-  const scale = Math.min(1, maxSize / Math.max(width, height))
+  const scale = Math.min(2, maxSize / Math.max(width, height))
   const targetWidth = clamp(Math.round(width * scale), 1, 1080)
   const targetHeight = clamp(Math.round(height * scale), 1, 1080)
 

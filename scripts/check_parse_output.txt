@@ -1,0 +1,7 @@
+total groups: 281
+parsed nodes (groups): 109
+parsed edges (groups): 24
+loose nodes: 35
+loose edges: 3
+sample node ids: [None, '0', '1', '63', None, '308', None, '311', None, '309']
+sample edge ids: ['103', None, '106', None, '190', None, '200', None, '307', None]

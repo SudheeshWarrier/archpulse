@@ -1,10 +1,57 @@
 export type ElementType = 'node' | 'edge'
+export type SuggestScope = 'all' | 'nodes' | 'edges'
 
 export interface ArchElement {
   id: string
   type: ElementType
   domSelector: string
   interactive?: boolean
+}
+
+export interface MxCell {
+  id: string
+  value: string
+  style: string
+  isVertex: boolean
+  isEdge: boolean
+  source?: string
+  target?: string
+  parent: string
+  geometry?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+}
+
+export interface MxGraphModel {
+  cells: Map<string, MxCell>
+  nodes: MxCell[]
+  edges: MxCell[]
+}
+
+export interface GraphNode {
+  id: string
+  label: string
+  style: string
+  geometry?: { x: number; y: number; width: number; height: number }
+}
+
+export interface GraphEdge {
+  id: string
+  label: string
+  style: string
+  source: string
+  target: string
+}
+
+export interface Graph {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  adjacency: Map<string, GraphEdge[]>
+  outgoing: Map<string, GraphEdge[]>
+  danglingEdges: GraphEdge[]
 }
 
 export interface AnimationStep {

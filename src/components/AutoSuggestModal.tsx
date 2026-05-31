@@ -1,13 +1,24 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { AnimationStep } from '../types'
 
 type Props = {
   steps: AnimationStep[]
-  onAccept: () => void
+  onAccept: (steps: AnimationStep[]) => void
   onReject: () => void
 }
 
 export default function AutoSuggestModal({ steps, onAccept, onReject }: Props) {
+  const [selectedIds, setSelectedIds] = useState(() => new Set(steps.map((step) => step.id)))
+
+  useEffect(() => {
+    setSelectedIds(new Set(steps.map((step) => step.id)))
+  }, [steps])
+
+  const selectedSteps = useMemo(
+    () => steps.filter((step) => selectedIds.has(step.id)),
+    [selectedIds, steps]
+  )
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="suggest-title">
       <div className="modal-card">
@@ -20,8 +31,23 @@ export default function AutoSuggestModal({ steps, onAccept, onReject }: Props) {
 
         <ol className="suggest-preview-list">
           {steps.map((step, index) => (
-            <li key={step.id}>
-              <span className="suggest-preview-num">{index + 1}</span>
+            <li key={step.id} className={!selectedIds.has(step.id) ? 'is-deselected' : ''}>
+              <label className="suggest-preview-toggle">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(step.id)}
+                  onChange={() => {
+                    setSelectedIds((current) => {
+                      const next = new Set(current)
+                      if (next.has(step.id)) next.delete(step.id)
+                      else next.add(step.id)
+                      return next
+                    })
+                  }}
+                  aria-label={`Include ${step.label}`}
+                />
+                <span className="suggest-preview-num">{index + 1}</span>
+              </label>
               <div>
                 <strong>{step.label}</strong>
                 <span className="suggest-preview-meta">
@@ -37,8 +63,8 @@ export default function AutoSuggestModal({ steps, onAccept, onReject }: Props) {
           <button type="button" className="ghost" onClick={onReject}>
             Cancel
           </button>
-          <button type="button" onClick={onAccept}>
-            Apply {steps.length} steps
+          <button type="button" onClick={() => onAccept(selectedSteps)} disabled={selectedSteps.length === 0}>
+            Apply {selectedSteps.length} steps
           </button>
         </footer>
       </div>

@@ -9,6 +9,7 @@ import SaveLoad from './components/SaveLoad'
 import { usePlayback } from './hooks/usePlayback'
 import { parseSVG } from './utils/parseSVG'
 import { autoGenerateSteps, buildPlaybackVisualState } from './utils/autoGenerate'
+import { AnimationStep, SuggestScope } from './types'
 import logo from './assets/archpulse.png'
 import './animations.css'
 import './styles.css'
@@ -21,6 +22,7 @@ export default function App() {
   const [suggestedSteps, setSuggestedSteps] = useState<ReturnType<typeof autoGenerateSteps> | null>(
     null
   )
+  const [isSuggestScopeOpen, setIsSuggestScopeOpen] = useState(false)
   const [isCanvasMaximized, setIsCanvasMaximized] = useState(false)
   const [themePreference, setThemePreference] = useState<ThemePreference>('system')
   const playback = usePlayback({ stepsCount: state.steps.length })
@@ -134,15 +136,20 @@ export default function App() {
     [dispatch, editingIndex, isPlaying, state.elements, state.steps]
   )
 
-  const handleSuggest = useCallback(() => {
+  const generateSuggestion = useCallback((scope: SuggestScope) => {
     if (!state.svg) return
-    const steps = autoGenerateSteps(state.svg, state.elements)
+    const steps = autoGenerateSteps(state.svg, state.elements, scope)
     if (steps.length === 0) {
       alert('Could not detect animatable elements in this diagram.')
       return
     }
     setSuggestedSteps(steps)
   }, [state.elements, state.svg])
+
+  const handleSuggest = useCallback(() => {
+    if (!state.svg) return
+    setIsSuggestScopeOpen(true)
+  }, [state.svg])
 
   const handleMoveStep = useCallback(
     (stepId: string, direction: -1 | 1) => {
@@ -165,13 +172,13 @@ export default function App() {
     [dispatch, editingIndex, state.steps]
   )
 
-  const acceptSuggestion = useCallback(() => {
-    if (!suggestedSteps) return
-    dispatch({ type: 'SET_STEPS', payload: suggestedSteps })
+  const acceptSuggestion = useCallback((steps: AnimationStep[]) => {
+    const renumberedSteps = steps.map((step, index) => ({ ...step, id: `step-${index + 1}` }))
+    dispatch({ type: 'SET_STEPS', payload: renumberedSteps })
     setEditingIndex(0)
     playback.setCurrentStep(0)
     setSuggestedSteps(null)
-  }, [dispatch, playback, suggestedSteps])
+  }, [dispatch, playback])
 
   const editingStep = state.steps[editingIndex] ?? null
   const playbackVisual = useMemo(
@@ -356,6 +363,45 @@ export default function App() {
           </article>
         </div>
       </section>
+
+      {isSuggestScopeOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="suggest-scope-title">
+          <div className="modal-card">
+            <header className="modal-header">
+              <h3 id="suggest-scope-title">Suggest animation for</h3>
+              <p>Choose which diagram elements should be used for this generated sequence.</p>
+            </header>
+
+            <div className="suggest-scope-grid">
+              {[
+                { value: 'all', icon: 'account_tree', title: 'All', meta: 'Nodes and lines' },
+                { value: 'edges', icon: 'timeline', title: 'Lines only', meta: 'Flow steps' },
+                { value: 'nodes', icon: 'category', title: 'Nodes only', meta: 'Highlight steps' }
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className="suggest-scope-option"
+                  onClick={() => {
+                    setIsSuggestScopeOpen(false)
+                    generateSuggestion(option.value as SuggestScope)
+                  }}
+                >
+                  <span className="material-icons" aria-hidden="true">{option.icon}</span>
+                  <strong>{option.title}</strong>
+                  <span>{option.meta}</span>
+                </button>
+              ))}
+            </div>
+
+            <footer className="modal-footer">
+              <button type="button" className="ghost" onClick={() => setIsSuggestScopeOpen(false)}>
+                Cancel
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
 
       {suggestedSteps && (
         <AutoSuggestModal
